@@ -189,26 +189,28 @@
   <script>
     const STORAGE_KEY = 'markdown-previewer:draft';
 
-    const SAMPLE = `# Markdown プレビューア
-
-左に **Markdown** を書くと右にプレビューが表示されます。
-
-## 記法の例
-
-- 箇条書き
-- もう一つ
-
-1. 番号付き
-2. 二番目
-
-[リンク](https://example.com)
-
-` + '`inline code`' + `
-
-```js
-console.log('code block');
-```
-`;
+    const SAMPLE = [
+      '# Markdown プレビューア',
+      '',
+      '左に **Markdown** を書くと右にプレビューが表示されます。',
+      '',
+      '## 記法の例',
+      '',
+      '- 箇条書き',
+      '- もう一つ',
+      '',
+      '1. 番号付き',
+      '2. 二番目',
+      '',
+      '[リンク](https://example.com)',
+      '',
+      '`inline code`',
+      '',
+      '```js',
+      "console.log('code block');",
+      '```',
+      ''
+    ].join('\n');
 
     const editor = document.getElementById('editor');
     const preview = document.getElementById('preview');
