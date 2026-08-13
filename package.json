@@ -2,10 +2,12 @@
   "name": "markdown-previewer",
   "private": true,
   "scripts": {
+    "test": "playwright test",
     "verify": "node scripts/verify.mjs",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "wrangler": "^4"
   }
 }
