@@ -63,3 +63,88 @@ test("SEO基礎: meta description・JSON-LD WebApplication・使い方/FAQ が�
 
   expect(errors).toEqual([]);
 });
+
+test("GFM表: 見出し・区切り・本文2行が table/thead/tbody になりセル内の太字とコードも描画される", async ({ page }) => {
+  await page.goto(APP_URL);
+  const markdown = [
+    "| 項目 | 値 |",
+    "| --- | --- |",
+    "| **A** | `1` |",
+    "| B | 2 |",
+  ].join("\n");
+
+  await page.locator("#editor").fill(markdown);
+
+  const preview = page.locator("#preview");
+  await expect(preview.locator("table")).toHaveCount(1);
+  await expect(preview.locator("thead tr th")).toHaveCount(2);
+  await expect(preview.locator("tbody tr")).toHaveCount(2);
+  await expect(preview).not.toContainText("---");
+  await expect(preview.locator("tbody tr").nth(0).locator("strong")).toHaveText("A");
+  await expect(preview.locator("tbody tr").nth(0).locator("code")).toHaveText("1");
+});
+
+test("GFM表: 列揃えクラスを付け、列不足は空tdで補い列超過は描画せずセル本文を属性に入れない", async ({ page }) => {
+  await page.goto(APP_URL);
+  const markdown = [
+    "| left | center | right |",
+    "| :--- | :---: | ---: |",
+    "| a | b |",
+    "| w | x | y | z |",
+  ].join("\n");
+
+  await page.locator("#editor").fill(markdown);
+
+  const preview = page.locator("#preview");
+  const headerCells = preview.locator("thead th");
+  await expect(headerCells).toHaveCount(3);
+  await expect(headerCells.nth(0)).toHaveClass("table-align-left");
+  await expect(headerCells.nth(1)).toHaveClass("table-align-center");
+  await expect(headerCells.nth(2)).toHaveClass("table-align-right");
+
+  const firstBody = preview.locator("tbody tr").nth(0).locator("td");
+  await expect(firstBody).toHaveCount(3);
+  await expect(firstBody.nth(0)).toHaveClass("table-align-left");
+  await expect(firstBody.nth(1)).toHaveClass("table-align-center");
+  await expect(firstBody.nth(2)).toHaveClass("table-align-right");
+  await expect(firstBody.nth(2)).toHaveText("");
+
+  const secondBody = preview.locator("tbody tr").nth(1).locator("td");
+  await expect(secondBody).toHaveCount(3);
+  await expect(secondBody.nth(0)).toHaveClass("table-align-left");
+  await expect(secondBody.nth(1)).toHaveClass("table-align-center");
+  await expect(secondBody.nth(2)).toHaveClass("table-align-right");
+  await expect(preview.locator("tbody tr").nth(1)).not.toContainText("z");
+
+  const attrLeak = await preview.locator("th, td").evaluateAll((cells) =>
+    cells.some((el) =>
+      [...el.attributes].some((attr) => attr.name !== "class" || el.textContent === attr.value),
+    ),
+  );
+  expect(attrLeak).toBe(false);
+});
+
+test("縦棒行・フェンス内の表・セル内HTMLは表やscriptにならない", async ({ page }) => {
+  await page.goto(APP_URL);
+
+  await page.locator("#editor").fill("| これは表ではない |");
+  const preview = page.locator("#preview");
+  await expect(preview.locator("table")).toHaveCount(0);
+  await expect(preview.locator("p")).toContainText("これは表ではない");
+
+  const fenced = ["```", "| a | b |", "| --- | --- |", "| c | d |", "```"].join("\n");
+  await page.locator("#editor").fill(fenced);
+  await expect(preview.locator("table")).toHaveCount(0);
+  await expect(preview.locator("pre > code")).toContainText("| a | b |");
+  await expect(preview.locator("pre > code")).toContainText("| --- | --- |");
+
+  const xss = [
+    "| 項目 | 値 |",
+    "| --- | --- |",
+    "| x | <script>alert(1)</script> |",
+  ].join("\n");
+  await page.locator("#editor").fill(xss);
+  await expect(preview.locator("table")).toHaveCount(1);
+  await expect(preview.locator("script")).toHaveCount(0);
+  await expect(preview.locator("tbody td").nth(1)).toHaveText("<script>alert(1)</script>");
+});

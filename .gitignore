@@ -3,3 +3,4 @@ node_modules/
 .claude/settings.local.json
 test-results/
 playwright-report/
+.grow-plan.md

@@ -161,6 +161,31 @@
       margin: 1.5em 0;
     }
 
+    #preview table {
+      border-collapse: collapse;
+      margin: 0.75em 0;
+      min-width: 100%;
+    }
+
+    #preview th,
+    #preview td {
+      border: 1px solid #414868;
+      padding: 0.4em 0.75em;
+    }
+
+    #preview th {
+      background: #16161e;
+      font-weight: 600;
+    }
+
+    #preview td {
+      background: #0f0f14;
+    }
+
+    #preview .table-align-left { text-align: left; }
+    #preview .table-align-center { text-align: center; }
+    #preview .table-align-right { text-align: right; }
+
     .info {
       padding: 1.5rem 1.25rem 0;
       max-width: 48rem;
@@ -336,6 +361,63 @@
       if (state.inOl) { state.out.push('</ol>'); state.inOl = false; }
     }
 
+    function splitTableRow(line) {
+      let s = line.trim();
+      if (s.charAt(0) === '|') s = s.slice(1);
+      if (s.charAt(s.length - 1) === '|') s = s.slice(0, -1);
+      return s.split('|').map(function (cell) { return cell.trim(); });
+    }
+
+    function parseColumnAlign(cell) {
+      const m = cell.match(/^(:?)-{3,}(:?)$/);
+      if (!m) return null;
+      if (m[1] && m[2]) return 'center';
+      if (m[2]) return 'right';
+      return 'left';
+    }
+
+    function isSeparatorRow(line) {
+      if (line.indexOf('|') === -1) return false;
+      const cells = splitTableRow(line);
+      if (cells.length === 0) return false;
+      return cells.every(function (cell) { return parseColumnAlign(cell) !== null; });
+    }
+
+    function alignedCell(tag, text, align) {
+      return '<' + tag + ' class="table-align-' + align + '">' + parseInline(text) + '</' + tag + '>';
+    }
+
+    function parseTable(lines, start) {
+      const headerCells = splitTableRow(lines[start]);
+      const colCount = headerCells.length;
+      const sepCells = splitTableRow(lines[start + 1]);
+      const aligns = [];
+      for (let c = 0; c < colCount; c++) {
+        aligns.push(parseColumnAlign(sepCells[c] || '') || 'left');
+      }
+
+      const ths = headerCells.map(function (text, idx) {
+        return alignedCell('th', text, aligns[idx]);
+      }).join('');
+
+      let i = start + 2;
+      const bodyRows = [];
+      while (i < lines.length && lines[i].indexOf('|') !== -1 && lines[i].trim() !== '') {
+        const cells = splitTableRow(lines[i]);
+        const tds = [];
+        for (let c = 0; c < colCount; c++) {
+          tds.push(alignedCell('td', c < cells.length ? cells[c] : '', aligns[c]));
+        }
+        bodyRows.push('<tr>' + tds.join('') + '</tr>');
+        i++;
+      }
+
+      return {
+        html: '<table><thead><tr>' + ths + '</tr></thead><tbody>' + bodyRows.join('') + '</tbody></table>',
+        next: i
+      };
+    }
+
     function parseBlocks(src) {
       const lines = src.split('\n');
       const state = { out: [], inUl: false, inOl: false };
@@ -355,6 +437,14 @@
           }
           if (i < lines.length) i++;
           state.out.push('<pre><code>' + codeLines.join('\n') + '</code></pre>');
+          continue;
+        }
+
+        if (i + 1 < lines.length && line.indexOf('|') !== -1 && isSeparatorRow(lines[i + 1])) {
+          closeLists(state);
+          const table = parseTable(lines, i);
+          state.out.push(table.html);
+          i = table.next;
           continue;
         }
 
