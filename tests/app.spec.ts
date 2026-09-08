@@ -64,6 +64,16 @@ test("SEO基礎: meta description・JSON-LD WebApplication・使い方/FAQ が�
   expect(errors).toEqual([]);
 });
 
+test("初期サンプルと案内が表の確認をこのアプリ内で完結させる", async ({ page }) => {
+  await page.goto(APP_URL);
+  const preview = page.locator("#preview");
+  await expect(preview.locator("table")).toHaveCount(1);
+  await expect(preview.locator("thead tr th")).toHaveCount(2);
+  await expect(preview.locator("tbody tr")).toHaveCount(2);
+  await expect(page.locator("#how-to")).toContainText("コードブロック・表");
+  await expect(page.locator("#faq dd").nth(2)).toContainText("表");
+});
+
 test("GFM表: 見出し・区切り・本文2行が table/thead/tbody になりセル内の太字とコードも描画される", async ({ page }) => {
   await page.goto(APP_URL);
   const markdown = [
